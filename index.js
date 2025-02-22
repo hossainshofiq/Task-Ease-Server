@@ -4,13 +4,12 @@ const cors = require('cors');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
 
-
+// middlewares
 app.use(cors());
 app.use(express.json());
 
 
-
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.j5p3s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -33,6 +32,8 @@ async function run() {
 
 
     // users related apis
+
+    // get all users
     app.get('/users', async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
@@ -57,17 +58,10 @@ async function run() {
     })
 
     // tasks related apis
-    // app.post('/tasks', async (req, res) => {
-    //   const task = req.body;
-    //   console.log(task);
-    //   const result = await tasksCollection.insertOne(task);
-    //   res.send(result);
-    // })
 
     // Get all task of a specific user
-
     app.get("/tasks", async (req, res) => {
-      const query = { addedBy: req?.query?.email, taskCategory: req?.query?.category }
+      const query = { addedBy: req?.query?.email }
       const option = {
         sort: { date: -1 }
       }
@@ -75,13 +69,56 @@ async function run() {
       res.send(result);
     })
 
-    // Post a Task by User
+    // Post a Task api
     app.post("/tasks", async (req, res) => {
       const result = await tasksCollection.insertOne(req?.body);
       res.send(result);
     })
 
+    // update task category when drag and drop
+    app.patch("/tasks", async (req, res) => {
+      const filter = { _id: new ObjectId(req?.body?.taskId) }
 
+      const updateDoc = {
+        $set: { taskCategory: req?.body?.newCategory }
+      };
+
+      const result = await tasksCollection.updateOne(filter, updateDoc);
+
+      res.send(result);
+    })
+
+    // delete a task api
+    app.delete('/task/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await tasksCollection.deleteOne(query);
+      res.send(result);
+    })
+
+
+    // get a task by ID
+    app.get("/aTask", async (req, res)=> {
+      const filter = {_id: new ObjectId (req?.query?.id)}
+
+      const result = await tasksCollection.findOne (filter);
+      res.send(result);
+    })
+
+    // update a task api
+    app.put('/updateATask', async (req, res) => {
+      const { taskTitle, taskDescription, taskCategory } = req.body;
+      const query = { _id: new ObjectId(req?.body?.taskId) };
+      const updatedDoc = {
+        $set: {
+          taskTitle: taskTitle,
+          taskDescription: taskDescription,
+          taskCategory: taskCategory
+        }
+      }
+      const result = await tasksCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    })
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
@@ -100,5 +137,5 @@ app.get('/', (req, res) => {
 })
 
 app.listen(port, () => {
-  console.log(`Task management si waiting on port ${port}`);
+  console.log(`Task management is waiting on port ${port}`);
 })
